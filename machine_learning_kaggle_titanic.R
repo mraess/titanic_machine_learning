@@ -3,7 +3,7 @@
 
 # Reading in data ---------------------------------------------------------
 
-library(tidyverse)
+library(tidyverse)  
 
 training <- read.csv("trainTi.csv", header = TRUE)
 
