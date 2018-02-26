@@ -180,3 +180,152 @@ write.table(submission3, file = "submission3.csv", col.names = TRUE, row.names =
 
 ## Try different model with same variables as in model_rf2
 
+
+# Logistic regression -----------------------------------------------------
+
+library(caret)
+
+## Include age and impute missing values with median
+
+training$Age <- ifelse(is.na(training$Age), median(training$Age, na.rm = TRUE), training$Age)
+
+training$Survived <- factor(training$Survived, levels = c("0", "1"), labels = c("0", "1"))
+
+training$Survived <- as.factor(ifelse(training$Survived == "0", "died", "survived"))
+
+summary(training)
+
+myControl <- trainControl(method = "cv", number = 10, summaryFunction = twoClassSummary, classProbs = TRUE)
+
+model_logit <- train(Survived ~ Pclass + Sex + Fare + SibSp + Embarked + Parch + Age, data = training, method = "glm",
+                   trControl = myControl)
+
+model_logit
+
+testing4 <- testing
+
+## Use median to impute missing value
+
+testing4$Fare <- ifelse(is.na(testing4$Fare), median(testing4$Fare, na.rm = TRUE), testing4$Fare)
+
+testing4$Age <- ifelse(is.na(testing4$Age), median(testing4$Age, na.rm = TRUE), testing4$Age)
+
+testing4$Survived <- predict(model_logit, testing4)
+
+# New submission to Kaggle
+
+testing4$Survived <- as.factor(ifelse(testing4$Survived == "died", "0", "1"))
+
+submission4 <- testing4 %>% select(PassengerId, Survived)
+
+write.table(submission4, file = "submission4.csv", col.names = TRUE, row.names = FALSE, sep = ",")
+
+# .75119 not an improvement to model_rf2
+
+
+# Ensemble ----------------------------------------------------------------
+
+library(caretEnsemble)
+
+training$Age <- ifelse(is.na(training$Age), median(training$Age, na.rm = TRUE), training$Age)
+
+training$Survived <- factor(training$Survived, levels = c("0", "1"), labels = c("0", "1"))
+
+training$Survived <- as.factor(ifelse(training$Survived == "0", "died", "survived"))
+
+## Create model list
+
+ensemble_models <- caretList(
+        Survived ~ Pclass + Sex + Fare + SibSp + Embarked + Parch + Age,
+        data = training,
+        methodList = c("ranger", "glm"),
+        trControl = myControl
+)
+
+ens_model <- caretEnsemble(ensemble_models)
+
+## Use median to impute missing value
+
+testing5 <- testing
+
+testing5$Fare <- ifelse(is.na(testing5$Fare), median(testing5$Fare, na.rm = TRUE), testing5$Fare)
+
+testing5$Age <- ifelse(is.na(testing5$Age), median(testing5$Age, na.rm = TRUE), testing5$Age)
+
+testing5$Survived <- predict(ens_model, testing5)
+
+## Ensemble submission to Kaggle
+
+testing5$Survived <- as.factor(ifelse(testing5$Survived == "died", "0", "1"))
+
+submission5 <- testing5 %>% select(PassengerId, Survived)
+
+write.table(submission5, file = "submission5.csv", col.names = TRUE, row.names = FALSE, sep = ",")
+
+# Your submission scored 0.75598, which is not an improvement of your best score. Keep trying! 
+
+# It seems that the models are not the issue and the problems lies in the predictors that need to be tweaked
+
+
+# Classification tree ------------------------------------------
+
+myControl <- trainControl(method = "cv", number = 10, summaryFunction = twoClassSummary, classProbs = TRUE)
+
+model_rpart <- train(Survived ~ Pclass + Sex + Fare + SibSp + Embarked + Parch + Age, data = training, method = "rpart",
+                     trControl = myControl)
+
+model_rpart
+
+## Use median to impute missing value
+
+testing6 <- testing
+
+testing6$Fare <- ifelse(is.na(testing6$Fare), median(testing6$Fare, na.rm = TRUE), testing6$Fare)
+
+testing6$Age <- ifelse(is.na(testing6$Age), median(testing6$Age, na.rm = TRUE), testing6$Age)
+
+testing6$Survived <- predict(model_rpart, testing6)
+
+## Ensemble submission to Kaggle
+
+testing6$Survived <- as.factor(ifelse(testing6$Survived == "died", "0", "1"))
+
+submission6 <- testing6 %>% select(PassengerId, Survived)
+
+write.table(submission6, file = "submission6.csv", col.names = TRUE, row.names = FALSE, sep = ",")
+
+# You advanced 859 places on the leaderboard!
+# Your submission scored 0.78468, which is an improvement of your previous score of 0.77990. Great job!
+
+
+# Ensembling randomForrest and rpart --------------------------------------
+
+ensemble_models2 <- caretList(
+        Survived ~ Pclass + Sex + Fare + SibSp + Embarked + Parch + Age,
+        data = training,
+        methodList = c("ranger", "rpart"),
+        trControl = myControl
+)
+
+ens_model2 <- caretEnsemble(ensemble_models2)
+
+## Use median to impute missing value
+
+testing7 <- testing
+
+testing7$Fare <- ifelse(is.na(testing7$Fare), median(testing7$Fare, na.rm = TRUE), testing7$Fare)
+
+testing7$Age <- ifelse(is.na(testing7$Age), median(testing7$Age, na.rm = TRUE), testing7$Age)
+
+testing7$Survived <- predict(ens_model2, testing7)
+
+## Ensemble submission to Kaggle
+
+testing7$Survived <- as.factor(ifelse(testing7$Survived == "died", "0", "1"))
+
+submission7 <- testing7 %>% select(PassengerId, Survived)
+
+write.table(submission7, file = "submission7.csv", col.names = TRUE, row.names = FALSE, sep = ",")
+
+## => Your submission scored 0.20574, which is not an improvement of your best score. Keep trying!
+# Worst result so far...keep working with rpart and tweak variables...
